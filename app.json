@@ -36,7 +36,14 @@
       ],
       "expo-secure-store",
       "expo-web-browser",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Let NCAA Arbiters access your photos so you can set a profile picture or share images in chat.",
+          "cameraPermission": "Let NCAA Arbiters use your camera so you can take a profile picture or share a photo in chat."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

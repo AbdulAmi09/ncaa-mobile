@@ -1,11 +1,12 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { ActivityIndicator, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { registerForPushNotifications } from '@/lib/push-notifications';
+import { ThemeOverrideProvider, useThemeOverride } from '@/lib/theme-override-context';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -37,6 +38,10 @@ function RootNavigator() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="notifications"
+          options={{ headerShown: true, title: 'Notifications', presentation: 'card' }}
+        />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="login" />
@@ -45,15 +50,21 @@ function RootNavigator() {
   );
 }
 
+function NavigationThemeProvider({ children }: { children: React.ReactNode }) {
+  const { resolvedScheme } = useThemeOverride();
+  return <ThemeProvider value={resolvedScheme === 'dark' ? DarkTheme : DefaultTheme}>{children}</ThemeProvider>;
+}
+
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   return (
     <SafeAreaProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <AuthProvider>
-          <RootNavigator />
-        </AuthProvider>
-      </ThemeProvider>
+      <ThemeOverrideProvider>
+        <NavigationThemeProvider>
+          <AuthProvider>
+            <RootNavigator />
+          </AuthProvider>
+        </NavigationThemeProvider>
+      </ThemeOverrideProvider>
     </SafeAreaProvider>
   );
 }

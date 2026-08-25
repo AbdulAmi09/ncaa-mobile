@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { type Payment, TYPE_LABELS, fetchPaymentById, formatNaira } from '@/lib/payments';
@@ -73,7 +74,7 @@ export default function ReceiptScreen() {
     <ThemedView style={styles.flex}>
       <SafeAreaView style={styles.flex} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.content}>
-          <ThemedView type="backgroundElement" style={styles.card}>
+          <Card style={styles.card}>
             <ThemedView style={styles.successRow}>
               <Ionicons name="checkmark-circle" size={22} color={theme.success} />
               <ThemedText type="smallBold" themeColor="success">
@@ -101,7 +102,7 @@ export default function ReceiptScreen() {
                 value={payment.paid_date ? new Date(payment.paid_date).toLocaleString('en-NG') : '—'}
               />
             </ThemedView>
-          </ThemedView>
+          </Card>
 
           <Pressable
             onPress={handleShare}
@@ -125,7 +126,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
   },
-  card: { borderRadius: 16, padding: Spacing.four, gap: Spacing.four },
+  card: { gap: Spacing.four },
   successRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, justifyContent: 'center' },
   amountBlock: { alignItems: 'center', gap: Spacing.half, paddingVertical: Spacing.three },
   details: { gap: Spacing.two },

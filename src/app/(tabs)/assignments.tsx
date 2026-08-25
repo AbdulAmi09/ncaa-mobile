@@ -2,16 +2,20 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
 
 import { BigButton } from '@/components/big-button';
+import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import type { ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { type Assignment, fetchAssignments, respondToAssignment } from '@/lib/assignments';
 import { useAuth } from '@/lib/auth-context';
 import { getOrCreateDmRoom } from '@/lib/chat';
-import type { ThemeColor } from '@/constants/theme';
+
+const EVALUATION_WEB_URL = 'https://app.ncaaweb.com.ng/dashboard/tournament-evaluation';
 
 type Filter = 'all' | 'Pending' | 'Accepted' | 'Completed';
 
@@ -118,6 +122,10 @@ export default function AssignmentsScreen() {
     router.push(`/chat/${roomId}`);
   }
 
+  function handleEvaluate() {
+    WebBrowser.openBrowserAsync(EVALUATION_WEB_URL);
+  }
+
   return (
     <ThemedView style={styles.flex}>
       <SafeAreaView style={styles.flex} edges={['top']}>
@@ -153,21 +161,19 @@ export default function AssignmentsScreen() {
             contentContainerStyle={styles.list}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
             {!!errorText && (
-              <ThemedView type="backgroundElement" style={styles.card}>
+              <Card>
                 <ThemedText themeColor="danger">{errorText}</ThemedText>
-              </ThemedView>
+              </Card>
             )}
 
             {visible.length === 0 && !errorText && (
-              <ThemedView type="backgroundElement" style={styles.card}>
-                <ThemedText themeColor="textSecondary">
-                  No assignments here right now.
-                </ThemedText>
-              </ThemedView>
+              <Card>
+                <ThemedText themeColor="textSecondary">No assignments here right now.</ThemedText>
+              </Card>
             )}
 
             {visible.map((a) => (
-              <ThemedView key={a.id} type="backgroundElement" style={styles.card}>
+              <Card key={a.id} style={styles.cardGap}>
                 <ThemedView style={styles.cardHeaderRow}>
                   <ThemedText type="heading" style={styles.tournamentName}>
                     {a.tournament_name}
@@ -239,7 +245,13 @@ export default function AssignmentsScreen() {
                     />
                   </ThemedView>
                 )}
-              </ThemedView>
+
+                {a.assignment_status === 'Completed' && (
+                  <ThemedView style={styles.actions}>
+                    <BigButton label="Evaluate tournament" variant="secondary" onPress={handleEvaluate} />
+                  </ThemedView>
+                )}
+              </Card>
             ))}
           </ScrollView>
         )}
@@ -256,7 +268,7 @@ const styles = StyleSheet.create({
   filterRowContent: { paddingHorizontal: Spacing.four, gap: Spacing.two },
   filterChip: {
     borderWidth: 1,
-    borderRadius: 999,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
@@ -267,10 +279,10 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
   },
-  card: { borderRadius: 16, padding: Spacing.four, gap: Spacing.half },
+  cardGap: { gap: Spacing.half },
   cardHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing.two },
   tournamentName: { flex: 1 },
-  badge: { borderWidth: 1.5, borderRadius: 999, paddingHorizontal: Spacing.two, paddingVertical: 2 },
+  badge: { borderWidth: 1.5, borderRadius: Radius.pill, paddingHorizontal: Spacing.two, paddingVertical: 2 },
   detailLine: { marginTop: Spacing.half },
   notesBox: { borderRadius: 12, padding: Spacing.three, marginTop: Spacing.two },
   actions: { gap: Spacing.two, marginTop: Spacing.three },

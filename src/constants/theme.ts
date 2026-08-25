@@ -62,5 +62,25 @@ export const FontSize = {
 // with small touch targets.
 export const MinTouchTarget = 52;
 
+export const Radius = {
+  card: 18,
+  pill: 999,
+  input: 14,
+} as const;
+
+// A single, subtle elevation used everywhere a "card" appears, so the app
+// reads as a stack of real surfaces instead of flat blocks of color.
+// iOS/Android use different shadow APIs, hence the split.
+export const CardShadow = Platform.select({
+  ios: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+  },
+  android: { elevation: 2 },
+  default: {},
+}) as object;
+
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 640;

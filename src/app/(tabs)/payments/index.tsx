@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
@@ -5,9 +6,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 
 import { BigButton } from '@/components/big-button';
+import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import type { ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
@@ -142,14 +144,17 @@ export default function PaymentsScreen() {
             contentContainerStyle={styles.content}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
             {!!errorText && (
-              <ThemedView type="backgroundElement" style={styles.card}>
+              <Card>
                 <ThemedText themeColor="danger">{errorText}</ThemedText>
-              </ThemedView>
+              </Card>
             )}
 
             {dues.length > 0 && (
-              <ThemedView type="backgroundElement" style={[styles.card, { borderColor: theme.warning, borderWidth: 1.5 }]}>
-                <ThemedText type="heading">What you owe</ThemedText>
+              <Card style={{ borderColor: theme.warning, borderWidth: 1.5, gap: Spacing.two }}>
+                <ThemedView style={styles.dueHeaderRow}>
+                  <Ionicons name="alert-circle" size={18} color={theme.warning} />
+                  <ThemedText type="heading">What you owe</ThemedText>
+                </ThemedView>
                 {dues.map((due) => (
                   <ThemedView key={due.id} style={styles.dueRow}>
                     <ThemedView style={styles.dueInfo}>
@@ -162,14 +167,14 @@ export default function PaymentsScreen() {
                   </ThemedView>
                 ))}
                 <BigButton label="Pay on the NCAA website" onPress={payOnWebsite} />
-              </ThemedView>
+              </Card>
             )}
 
             <ThemedView style={styles.summaryGrid}>
-              <SummaryTile label="Total paid" value={formatNaira(totalPaid)} color="success" />
-              <SummaryTile label="Pending" value={formatNaira(totalPending)} color="warning" />
-              <SummaryTile label="Overdue" value={formatNaira(totalOverdue)} color="danger" />
-              <SummaryTile label="This year" value={formatNaira(thisYearTotal)} color="text" />
+              <SummaryTile label="Total paid" value={formatNaira(totalPaid)} color="success" icon="checkmark-circle" />
+              <SummaryTile label="Pending" value={formatNaira(totalPending)} color="warning" icon="time" />
+              <SummaryTile label="Overdue" value={formatNaira(totalOverdue)} color="danger" icon="alert-circle" />
+              <SummaryTile label="This year" value={formatNaira(thisYearTotal)} color="text" icon="calendar" />
             </ThemedView>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
@@ -192,38 +197,37 @@ export default function PaymentsScreen() {
             </ScrollView>
 
             {visible.length === 0 && !errorText && (
-              <ThemedView type="backgroundElement" style={styles.card}>
+              <Card>
                 <ThemedText themeColor="textSecondary">No payment records here.</ThemedText>
-              </ThemedView>
+              </Card>
             )}
 
             {visible.map((p) => (
               <Pressable
                 key={p.id}
                 onPress={() => p.payment_status === 'paid' && router.push(`/payments/${p.id}`)}
-                style={({ pressed }) => [
-                  styles.card,
-                  { backgroundColor: theme.backgroundElement, opacity: pressed ? 0.8 : 1 },
-                ]}>
-                <ThemedView style={styles.cardHeaderRow}>
-                  <ThemedText type="heading" style={styles.paymentTitle}>
-                    {p.tournament_name || p.description || TYPE_LABELS[p.payment_type] || 'Payment'}
-                  </ThemedText>
-                  <ThemedView type="background" style={[styles.badge, { borderColor: theme[statusColor(p.payment_status)] }]}>
-                    <ThemedText type="small" themeColor={statusColor(p.payment_status)}>
-                      {p.payment_status}
+                style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}>
+                <Card style={styles.cardGap}>
+                  <ThemedView style={styles.cardHeaderRow}>
+                    <ThemedText type="heading" style={styles.paymentTitle}>
+                      {p.tournament_name || p.description || TYPE_LABELS[p.payment_type] || 'Payment'}
                     </ThemedText>
+                    <ThemedView type="background" style={[styles.badge, { borderColor: theme[statusColor(p.payment_status)] }]}>
+                      <ThemedText type="small" themeColor={statusColor(p.payment_status)}>
+                        {p.payment_status}
+                      </ThemedText>
+                    </ThemedView>
                   </ThemedView>
-                </ThemedView>
-                <ThemedText style={styles.amount}>{formatNaira(p.amount, p.currency)}</ThemedText>
-                <ThemedText themeColor="textSecondary" type="small">
-                  {TYPE_LABELS[p.payment_type] ?? p.payment_type} · Due {formatDate(p.due_date)}
-                </ThemedText>
-                {p.payment_status === 'paid' && (
-                  <ThemedText type="small" style={{ color: theme.primary, marginTop: Spacing.half }}>
-                    View receipt →
+                  <ThemedText style={styles.amount}>{formatNaira(p.amount, p.currency)}</ThemedText>
+                  <ThemedText themeColor="textSecondary" type="small">
+                    {TYPE_LABELS[p.payment_type] ?? p.payment_type} · Due {formatDate(p.due_date)}
                   </ThemedText>
-                )}
+                  {p.payment_status === 'paid' && (
+                    <ThemedText type="small" style={{ color: theme.primary, marginTop: Spacing.half }}>
+                      View receipt →
+                    </ThemedText>
+                  )}
+                </Card>
               </Pressable>
             ))}
 
@@ -242,17 +246,28 @@ export default function PaymentsScreen() {
   );
 }
 
-function SummaryTile({ label, value, color }: { label: string; value: string; color: ThemeColor }) {
+function SummaryTile({
+  label,
+  value,
+  color,
+  icon,
+}: {
+  label: string;
+  value: string;
+  color: ThemeColor;
+  icon: keyof typeof Ionicons.glyphMap;
+}) {
   const theme = useTheme();
   return (
-    <ThemedView type="backgroundElement" style={styles.summaryTile}>
-      <ThemedText type="small" themeColor="textSecondary">
+    <Card style={styles.summaryTile}>
+      <Ionicons name={icon} size={18} color={theme[color]} />
+      <ThemedText type="small" themeColor="textSecondary" style={styles.cardSpacing}>
         {label}
       </ThemedText>
-      <ThemedText type="heading" style={{ color: theme[color], marginTop: 2 }}>
+      <ThemedText type="heading" style={{ color: theme[color] }}>
         {value}
       </ThemedText>
-    </ThemedView>
+    </Card>
   );
 }
 
@@ -266,15 +281,17 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
   },
-  card: { borderRadius: 16, padding: Spacing.four, gap: Spacing.two },
+  cardGap: { gap: Spacing.two },
+  cardSpacing: { marginTop: Spacing.one },
+  dueHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   dueRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   dueInfo: { gap: 2 },
   summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
-  summaryTile: { flexBasis: '47%', flexGrow: 1, borderRadius: 16, padding: Spacing.three },
+  summaryTile: { flexBasis: '47%', flexGrow: 1 },
   filterRow: { gap: Spacing.two, paddingVertical: Spacing.half },
-  filterChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
+  filterChip: { borderWidth: 1, borderRadius: Radius.pill, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: Spacing.two },
   paymentTitle: { flex: 1 },
-  badge: { borderWidth: 1.5, borderRadius: 999, paddingHorizontal: Spacing.two, paddingVertical: 2 },
+  badge: { borderWidth: 1.5, borderRadius: Radius.pill, paddingHorizontal: Spacing.two, paddingVertical: 2 },
   amount: { fontSize: 22, fontWeight: '700' },
 });
