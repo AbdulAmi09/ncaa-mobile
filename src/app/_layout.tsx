@@ -5,6 +5,7 @@ import { ActivityIndicator, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '@/lib/auth-context';
+import { registerForPushNotifications } from '@/lib/push-notifications';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -14,6 +15,15 @@ function RootNavigator() {
   useEffect(() => {
     if (!loading) SplashScreen.hideAsync();
   }, [loading]);
+
+  const userId = session?.user.id;
+  useEffect(() => {
+    // Keyed on the user id, not the session object -- a token refresh
+    // produces a new session reference for the same user every ~hour, and
+    // re-registering the (unchanged) push token on every one of those would
+    // just be wasted permission checks and RPC calls.
+    if (userId) registerForPushNotifications();
+  }, [userId]);
 
   if (loading) {
     return (
