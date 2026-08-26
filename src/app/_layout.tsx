@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppLockScreen } from '@/components/app-lock-screen';
+import { OfflineBanner } from '@/components/offline-banner';
 import { OnboardingCarousel } from '@/components/onboarding-carousel';
 import { AppLockProvider, useAppLock } from '@/lib/app-lock-context';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
@@ -91,11 +92,14 @@ function RootLayout() {
     <SafeAreaProvider>
       <ThemeOverrideProvider>
         <NavigationThemeProvider>
-          <AuthProvider>
-            <AppLockProvider>
-              <RootNavigator />
-            </AppLockProvider>
-          </AuthProvider>
+          <View style={{ flex: 1 }}>
+            <AuthProvider>
+              <AppLockProvider>
+                <RootNavigator />
+              </AppLockProvider>
+            </AuthProvider>
+            <OfflineBanner />
+          </View>
         </NavigationThemeProvider>
       </ThemeOverrideProvider>
     </SafeAreaProvider>
