@@ -175,6 +175,12 @@ export default function HomeScreen() {
             <QuickAction icon="chatbubbles" label="Chat" onPress={() => router.push('/chat')} />
           </ThemedView>
 
+          <Card style={styles.moreRow}>
+            <MoreLink icon="megaphone-outline" label="Events" onPress={() => router.push('/events')} />
+            <MoreLink icon="people-outline" label="Directory" onPress={() => router.push('/directory')} />
+            <MoreLink icon="folder-outline" label="Resources" onPress={() => router.push('/resources')} />
+          </Card>
+
           {loadError && (
             <Card>
               <ThemedText themeColor="danger">
@@ -280,6 +286,26 @@ function QuickAction({
   );
 }
 
+function MoreLink({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable onPress={onPress} style={styles.moreLinkItem}>
+      <Ionicons name={icon} size={20} color={theme.text} />
+      <ThemedText type="small" style={styles.moreLinkLabel}>
+        {label}
+      </ThemedText>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   scrollContent: {
@@ -316,6 +342,9 @@ const styles = StyleSheet.create({
   quickActionItem: { alignItems: 'center', gap: Spacing.one, flex: 1 },
   quickActionIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
   quickActionLabel: { textAlign: 'center' },
+  moreRow: { flexDirection: 'row', paddingVertical: Spacing.three },
+  moreLinkItem: { flex: 1, alignItems: 'center', gap: Spacing.one },
+  moreLinkLabel: { textAlign: 'center' },
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   cardSpacing: { marginTop: Spacing.one },
   summaryRow: { flexDirection: 'row', gap: Spacing.three },

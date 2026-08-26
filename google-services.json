@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "158075631479",
+    "project_id": "ncaa-mobile-72e0e",
+    "storage_bucket": "ncaa-mobile-72e0e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:158075631479:android:290816503676714c375372",
+        "android_client_info": {
+          "package_name": "com.amisuabdul.ncaamobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDXposTj8HCITMOUqAr0-LD3ba0lfpetgU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

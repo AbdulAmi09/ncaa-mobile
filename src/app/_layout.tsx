@@ -68,6 +68,9 @@ function RootNavigator() {
           name="notifications"
           options={{ headerShown: true, title: 'Notifications', presentation: 'card' }}
         />
+        <Stack.Screen name="events" options={{ headerShown: true, title: 'Events' }} />
+        <Stack.Screen name="directory" options={{ headerShown: true, title: 'Arbiter directory' }} />
+        <Stack.Screen name="resources" options={{ headerShown: true, title: 'Resources' }} />
         <Stack.Screen name="dashboard/index" />
         <Stack.Screen name="dashboard/[...path]" />
       </Stack.Protected>
