@@ -96,7 +96,8 @@
           "faceIDPermission": "Let NCAA Arbiters use Face ID to unlock the app."
         }
       ],
-      "@sentry/react-native"
+      "@sentry/react-native",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,
