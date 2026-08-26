@@ -203,7 +203,7 @@ export default function NewPaymentScreen() {
                       keyboardType="number-pad"
                       placeholder="Enter amount"
                       placeholderTextColor={theme.textSecondary}
-                      style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+                      style={[styles.input, { borderColor: theme.border, backgroundColor: theme.background, color: theme.text }]}
                     />
                   </ThemedView>
                   <ThemedView>
@@ -215,7 +215,7 @@ export default function NewPaymentScreen() {
                       onChangeText={setDetails}
                       placeholder="Additional information"
                       placeholderTextColor={theme.textSecondary}
-                      style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+                      style={[styles.input, { borderColor: theme.border, backgroundColor: theme.background, color: theme.text }]}
                     />
                   </ThemedView>
                 </Card>

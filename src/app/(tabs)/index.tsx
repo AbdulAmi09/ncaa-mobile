@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
+import { Image, Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/card';
@@ -136,9 +136,13 @@ export default function HomeScreen() {
           <ThemedView style={styles.headerRow}>
             <ThemedView style={styles.headerLeft}>
               <ThemedView type="backgroundSelected" style={styles.avatar}>
-                <ThemedText type="smallBold" style={{ color: theme.primary }}>
-                  {initials(profile?.first_name ?? null, profile?.last_name ?? null)}
-                </ThemedText>
+                {profile?.avatar_url ? (
+                  <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+                ) : (
+                  <ThemedText type="smallBold" style={{ color: theme.primary }}>
+                    {initials(profile?.first_name ?? null, profile?.last_name ?? null)}
+                  </ThemedText>
+                )}
               </ThemedView>
               <ThemedView>
                 <ThemedText type="title">Hello, {firstName}</ThemedText>
@@ -287,7 +291,8 @@ const styles = StyleSheet.create({
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, flexShrink: 1 },
-  avatar: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatarImage: { width: '100%', height: '100%' },
   bellButton: {
     width: MinTouchTarget,
     height: MinTouchTarget,

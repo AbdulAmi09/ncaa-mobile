@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabase';
 type RoomListItem = ChatRoom & {
   displayName: string;
   avatarInitials: string;
+  avatarUrl: string | null;
   lastMessage: string;
   lastMessageAt: string | null;
   unreadCount: number;
@@ -94,12 +95,14 @@ export default function ChatListScreen() {
 
     const items: RoomListItem[] = baseRooms.map((r) => {
       const otherId = otherParticipantId(r, userId);
-      const displayName = r.is_direct_message ? displayNameFor(profileMap[otherId ?? '']) : r.name;
+      const otherProfile = otherId ? profileMap[otherId] : null;
+      const displayName = r.is_direct_message ? displayNameFor(otherProfile) : r.name;
       const last = lastByRoom[r.id];
       return {
         ...r,
         displayName,
         avatarInitials: initials(displayName),
+        avatarUrl: r.is_direct_message ? (otherProfile?.avatar_url ?? null) : null,
         lastMessage: messagePreview(last ?? null),
         lastMessageAt: last?.created_at ?? null,
         unreadCount: unreadByRoom[r.id] ?? 0,
@@ -152,7 +155,11 @@ export default function ChatListScreen() {
                 onPress={() => router.push(`/chat/${item.id}`)}
                 style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}>
                 <ThemedView type="backgroundElement" style={styles.avatar}>
-                  <ThemedText type="smallBold">{item.avatarInitials}</ThemedText>
+                  {item.avatarUrl ? (
+                    <Image source={{ uri: item.avatarUrl }} style={styles.avatarImage} />
+                  ) : (
+                    <ThemedText type="smallBold">{item.avatarInitials}</ThemedText>
+                  )}
                 </ThemedView>
                 <ThemedView style={styles.rowBody}>
                   <ThemedView style={styles.rowTopLine}>
@@ -221,7 +228,9 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
+  avatarImage: { width: '100%', height: '100%' },
   rowBody: { flex: 1, gap: Spacing.half },
   rowTopLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.two },
   roomName: { flex: 1 },

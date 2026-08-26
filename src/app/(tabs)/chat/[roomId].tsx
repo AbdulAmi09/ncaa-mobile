@@ -309,7 +309,7 @@ export default function ChatThreadScreen() {
                 placeholder="Type a message"
                 placeholderTextColor={theme.textSecondary}
                 multiline
-                style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+                style={[styles.input, { borderColor: theme.border, backgroundColor: theme.backgroundElement, color: theme.text }]}
               />
               {draft.trim() ? (
                 <Pressable

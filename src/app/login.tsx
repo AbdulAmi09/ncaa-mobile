@@ -58,7 +58,7 @@ export default function LoginScreen() {
               keyboardType="email-address"
               placeholder="you@example.com"
               placeholderTextColor={theme.textSecondary}
-              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+              style={[styles.input, { borderColor: theme.border, backgroundColor: theme.backgroundElement, color: theme.text }]}
             />
 
             <ThemedText type="smallBold" style={styles.fieldSpacing}>
@@ -70,7 +70,7 @@ export default function LoginScreen() {
               secureTextEntry
               placeholder="Your password"
               placeholderTextColor={theme.textSecondary}
-              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+              style={[styles.input, { borderColor: theme.border, backgroundColor: theme.backgroundElement, color: theme.text }]}
             />
 
             {!!error && (

@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, TextInput } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -66,7 +66,7 @@ export default function NewChatScreen() {
             placeholder="Search by name"
             placeholderTextColor={theme.textSecondary}
             autoFocus
-            style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+            style={[styles.input, { borderColor: theme.border, backgroundColor: theme.backgroundElement, color: theme.text }]}
           />
         </ThemedView>
 
@@ -88,7 +88,11 @@ export default function NewChatScreen() {
               disabled={openingId !== null}
               style={({ pressed }) => [styles.row, { opacity: pressed || openingId === item.id ? 0.6 : 1 }]}>
               <ThemedView type="backgroundElement" style={styles.avatar}>
-                <ThemedText type="smallBold">{item.name.trim().charAt(0).toUpperCase() || '?'}</ThemedText>
+                {item.avatar_url ? (
+                  <Image source={{ uri: item.avatar_url }} style={styles.avatarImage} />
+                ) : (
+                  <ThemedText type="smallBold">{item.name.trim().charAt(0).toUpperCase() || '?'}</ThemedText>
+                )}
               </ThemedView>
               <ThemedView style={styles.rowBody}>
                 <ThemedText type="smallBold">{item.name}</ThemedText>
@@ -115,6 +119,7 @@ const styles = StyleSheet.create({
   centerText: { textAlign: 'center' },
   list: { paddingHorizontal: Spacing.four, gap: Spacing.three },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.two },
-  avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatarImage: { width: '100%', height: '100%' },
   rowBody: { flex: 1, gap: 2 },
 });

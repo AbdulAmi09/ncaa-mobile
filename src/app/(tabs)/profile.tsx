@@ -268,7 +268,7 @@ export default function ProfileScreen() {
                     placeholder={FIELD_LABELS[field]}
                     placeholderTextColor={theme.textSecondary}
                     multiline={field === 'bio'}
-                    style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+                    style={[styles.input, { borderColor: theme.border, backgroundColor: theme.background, color: theme.text }]}
                   />
                 </ThemedView>
               ))
@@ -321,7 +321,7 @@ export default function ProfileScreen() {
                 disabled={savingPrefs}
                 style={[
                   styles.switchTrack,
-                  { backgroundColor: emailNotifications ? theme.primary : theme.border },
+                  { backgroundColor: emailNotifications ? theme.primary : theme.backgroundSelected },
                 ]}>
                 <ThemedView
                   style={[
@@ -345,7 +345,7 @@ export default function ProfileScreen() {
                       onPress={() => setOverride(opt)}
                       style={[
                         styles.segment,
-                        { backgroundColor: active ? theme.primary : theme.background, borderColor: theme.border },
+                        { backgroundColor: active ? theme.primary : theme.backgroundSelected, borderColor: theme.border },
                       ]}>
                       <ThemedText type="small" style={{ color: active ? theme.primaryText : theme.text }}>
                         {opt === 'system' ? 'Automatic' : opt === 'light' ? 'Light' : 'Dark'}
@@ -377,7 +377,7 @@ export default function ProfileScreen() {
                   placeholder="Current password"
                   placeholderTextColor={theme.textSecondary}
                   secureTextEntry
-                  style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+                  style={[styles.input, { borderColor: theme.border, backgroundColor: theme.background, color: theme.text }]}
                 />
                 <TextInput
                   value={newPassword}
@@ -385,7 +385,11 @@ export default function ProfileScreen() {
                   placeholder="New password"
                   placeholderTextColor={theme.textSecondary}
                   secureTextEntry
-                  style={[styles.input, styles.inputSpacing, { borderColor: theme.border, color: theme.text }]}
+                  style={[
+                    styles.input,
+                    styles.inputSpacing,
+                    { borderColor: theme.border, backgroundColor: theme.background, color: theme.text },
+                  ]}
                 />
                 {!!passwordError && (
                   <ThemedText themeColor="danger" style={styles.inputSpacing}>
