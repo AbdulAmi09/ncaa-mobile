@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ImageLightbox } from '@/components/chat/image-lightbox';
 import { MessageActionsSheet } from '@/components/chat/message-actions-sheet';
+import { ReportSheet } from '@/components/chat/report-sheet';
 import { VideoBubble } from '@/components/chat/video-bubble';
 import { VoiceBubble } from '@/components/chat/voice-bubble';
 import { ThemedText } from '@/components/themed-text';
@@ -39,6 +40,7 @@ import {
   toggleReaction,
 } from '@/lib/chat';
 import { pickAndUploadChatMedia, resolveSignedChatMediaUrl, uploadVoiceMessage } from '@/lib/chat-media';
+import { type ReportReason, blockUser, submitReport } from '@/lib/moderation';
 import { supabase } from '@/lib/supabase';
 import { useVoiceRecorder } from '@/lib/use-voice-recorder';
 
@@ -77,6 +79,7 @@ export default function ChatThreadScreen() {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
   const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
+  const [reportTarget, setReportTarget] = useState<{ userId: string; userName: string; messageId?: string } | null>(null);
 
   useEffect(() => {
     if (!roomId || !userId) return;
@@ -326,6 +329,40 @@ export default function ChatThreadScreen() {
     ]);
   }
 
+  function handleOpenReport() {
+    if (!actionsFor) return;
+    setReportTarget({
+      userId: actionsFor.sender_id,
+      userName: senderNames[actionsFor.sender_id] ?? 'this person',
+      messageId: actionsFor.id,
+    });
+    setActionsFor(null);
+  }
+
+  function handleBlockFromSheet() {
+    if (!actionsFor) return;
+    const target = { userId: actionsFor.sender_id, name: senderNames[actionsFor.sender_id] ?? 'this person' };
+    setActionsFor(null);
+    Alert.alert(`Block ${target.name}?`, "You won't see messages from them anymore.", [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Block', style: 'destructive', onPress: () => blockUser(target.userId) },
+    ]);
+  }
+
+  async function handleSubmitReport(reason: ReportReason, details: string, alsoBlock: boolean) {
+    if (!reportTarget || !roomId) return;
+    await submitReport({
+      reportedUserId: reportTarget.userId,
+      roomId,
+      messageId: reportTarget.messageId,
+      reason,
+      details,
+    });
+    if (alsoBlock) await blockUser(reportTarget.userId);
+    setReportTarget(null);
+    Alert.alert('Report submitted', 'Thank you — an admin will review this.');
+  }
+
   return (
     <ThemedView style={styles.flex}>
       <Stack.Screen options={{ title }} />
@@ -486,8 +523,17 @@ export default function ChatThreadScreen() {
         onReact={handleReact}
         onEdit={actionsFor?.sender_id === userId && actionsFor?.message_type === 'text' ? handleEditFromSheet : undefined}
         onDelete={actionsFor?.sender_id === userId ? handleDeleteFromSheet : undefined}
+        onReport={actionsFor && actionsFor.sender_id !== userId ? handleOpenReport : undefined}
+        onBlock={actionsFor && actionsFor.sender_id !== userId ? handleBlockFromSheet : undefined}
         canEdit={actionsFor?.sender_id === userId && actionsFor?.message_type === 'text'}
         canDelete={actionsFor?.sender_id === userId}
+      />
+
+      <ReportSheet
+        visible={!!reportTarget}
+        userName={reportTarget?.userName ?? ''}
+        onClose={() => setReportTarget(null)}
+        onSubmit={handleSubmitReport}
       />
 
       <ImageLightbox uri={lightboxUri} onClose={() => setLightboxUri(null)} />

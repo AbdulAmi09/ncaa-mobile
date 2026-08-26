@@ -14,6 +14,8 @@ export function MessageActionsSheet({
   onReact,
   onEdit,
   onDelete,
+  onReport,
+  onBlock,
   canEdit,
   canDelete,
 }: {
@@ -22,6 +24,8 @@ export function MessageActionsSheet({
   onReact: (emoji: string) => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onReport?: () => void;
+  onBlock?: () => void;
   canEdit: boolean;
   canDelete: boolean;
 }) {
@@ -52,6 +56,20 @@ export function MessageActionsSheet({
                 <Pressable onPress={onDelete} style={styles.actionRow}>
                   <Ionicons name="trash-outline" size={20} color={theme.danger} />
                   <ThemedText style={[styles.actionLabel, { color: theme.danger }]}>Delete message</ThemedText>
+                </Pressable>
+              )}
+
+              {onReport && (
+                <Pressable onPress={onReport} style={styles.actionRow}>
+                  <Ionicons name="flag-outline" size={20} color={theme.text} />
+                  <ThemedText style={styles.actionLabel}>Report</ThemedText>
+                </Pressable>
+              )}
+
+              {onBlock && (
+                <Pressable onPress={onBlock} style={styles.actionRow}>
+                  <Ionicons name="ban-outline" size={20} color={theme.danger} />
+                  <ThemedText style={[styles.actionLabel, { color: theme.danger }]}>Block this person</ThemedText>
                 </Pressable>
               )}
 
