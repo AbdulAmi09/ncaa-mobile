@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AppLockScreen } from '@/components/app-lock-screen';
+import { AppLockProvider, useAppLock } from '@/lib/app-lock-context';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { registerForPushNotifications } from '@/lib/push-notifications';
 import { ThemeOverrideProvider, useThemeOverride } from '@/lib/theme-override-context';
@@ -12,6 +14,7 @@ SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
   const { session, loading } = useAuth();
+  const { enabled: lockEnabled, unlocked } = useAppLock();
 
   useEffect(() => {
     if (!loading) SplashScreen.hideAsync();
@@ -32,6 +35,12 @@ function RootNavigator() {
         <ActivityIndicator size="large" />
       </View>
     );
+  }
+
+  // Only gates screens behind the signed-in guard below -- there's nothing
+  // worth locking on the login screen itself.
+  if (session && lockEnabled && !unlocked) {
+    return <AppLockScreen />;
   }
 
   return (
@@ -63,7 +72,9 @@ export default function RootLayout() {
       <ThemeOverrideProvider>
         <NavigationThemeProvider>
           <AuthProvider>
-            <RootNavigator />
+            <AppLockProvider>
+              <RootNavigator />
+            </AppLockProvider>
           </AuthProvider>
         </NavigationThemeProvider>
       </ThemeOverrideProvider>

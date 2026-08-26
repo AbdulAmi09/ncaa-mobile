@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, MinTouchTarget, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAppLock } from '@/lib/app-lock-context';
 import { useAuth } from '@/lib/auth-context';
 import { pickAndUploadAvatar } from '@/lib/avatar';
 import { supabase } from '@/lib/supabase';
@@ -69,6 +70,17 @@ export default function ProfileScreen() {
   const [savingPrefs, setSavingPrefs] = useState(false);
 
   const { override, setOverride } = useThemeOverride();
+  const { hardwareAvailable, enabled: appLockEnabled, setEnabled: setAppLockEnabled } = useAppLock();
+  const [appLockError, setAppLockError] = useState('');
+  const [savingAppLock, setSavingAppLock] = useState(false);
+
+  async function handleToggleAppLock(next: boolean) {
+    setSavingAppLock(true);
+    setAppLockError('');
+    const { error } = await setAppLockEnabled(next);
+    if (error) setAppLockError(error);
+    setSavingAppLock(false);
+  }
 
   const [changingPassword, setChangingPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -361,6 +373,38 @@ export default function ProfileScreen() {
             Security
           </ThemedText>
           <Card style={styles.detailsCard}>
+            {hardwareAvailable && (
+              <>
+                <ThemedView style={styles.toggleRow}>
+                  <ThemedView style={styles.toggleLabel}>
+                    <ThemedText type="smallBold">App lock</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      Require Face ID or fingerprint to open the app
+                    </ThemedText>
+                  </ThemedView>
+                  <Pressable
+                    onPress={() => handleToggleAppLock(!appLockEnabled)}
+                    disabled={savingAppLock}
+                    style={[
+                      styles.switchTrack,
+                      { backgroundColor: appLockEnabled ? theme.primary : theme.backgroundSelected },
+                    ]}>
+                    <ThemedView
+                      style={[
+                        styles.switchThumb,
+                        { backgroundColor: '#fff', alignSelf: appLockEnabled ? 'flex-end' : 'flex-start' },
+                      ]}
+                    />
+                  </Pressable>
+                </ThemedView>
+                {!!appLockError && (
+                  <ThemedText themeColor="danger" type="small">
+                    {appLockError}
+                  </ThemedText>
+                )}
+              </>
+            )}
+
             {!changingPassword ? (
               <Pressable onPress={() => setChangingPassword(true)} style={styles.securityRow}>
                 <Ionicons name="lock-closed-outline" size={20} color={theme.text} />
