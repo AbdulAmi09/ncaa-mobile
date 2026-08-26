@@ -16,6 +16,7 @@ export function MessageActionsSheet({
   onDelete,
   onReport,
   onBlock,
+  onForward,
   canEdit,
   canDelete,
 }: {
@@ -26,6 +27,7 @@ export function MessageActionsSheet({
   onDelete?: () => void;
   onReport?: () => void;
   onBlock?: () => void;
+  onForward?: () => void;
   canEdit: boolean;
   canDelete: boolean;
 }) {
@@ -44,6 +46,13 @@ export function MessageActionsSheet({
                   </Pressable>
                 ))}
               </ThemedView>
+
+              {onForward && (
+                <Pressable onPress={onForward} style={styles.actionRow}>
+                  <Ionicons name="arrow-redo-outline" size={20} color={theme.text} />
+                  <ThemedText style={styles.actionLabel}>Forward</ThemedText>
+                </Pressable>
+              )}
 
               {canEdit && onEdit && (
                 <Pressable onPress={onEdit} style={styles.actionRow}>

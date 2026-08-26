@@ -91,6 +91,40 @@ export async function markRoomAsRead(userId: string, roomId: string) {
   await supabase.rpc('mark_messages_as_read', { p_user_id: userId, p_room_id: roomId });
 }
 
+export type ForwardTargetRoom = { id: string; displayName: string };
+
+// Same group_members-join-chat_rooms query the conversation list uses, cut
+// down to just what a "pick where to forward this" list needs.
+export async function fetchMyRoomsForForwarding(userId: string): Promise<ForwardTargetRoom[]> {
+  const { data: memberRooms } = await supabase
+    .from('group_members')
+    .select('group_id, chat_rooms!inner (id, name, room_type, is_direct_message, direct_message_with, created_by)')
+    .eq('user_id', userId)
+    .eq('is_hidden', false);
+
+  const baseRooms: ChatRoom[] = (memberRooms ?? []).map((m: any) => m.chat_rooms);
+  const otherIds = baseRooms.map((r) => otherParticipantId(r, userId)).filter((id): id is string => !!id);
+  const profileMap = await fetchProfilesMap(otherIds);
+
+  return baseRooms.map((r) => {
+    const otherId = otherParticipantId(r, userId);
+    return { id: r.id, displayName: r.is_direct_message ? displayNameFor(profileMap[otherId ?? '']) : r.name };
+  });
+}
+
+export async function forwardMessage(targetRoomId: string, senderId: string, source: Pick<ChatMessage, 'content' | 'message_type' | 'file_url' | 'file_name' | 'file_size' | 'duration'>) {
+  return supabase.from('chat_messages').insert({
+    room_id: targetRoomId,
+    sender_id: senderId,
+    content: source.content,
+    message_type: source.message_type,
+    file_url: source.file_url,
+    file_name: source.file_name,
+    file_size: source.file_size,
+    duration: source.duration,
+  });
+}
+
 export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
 export type ReactionGroup = { emoji: string; userIds: string[] };

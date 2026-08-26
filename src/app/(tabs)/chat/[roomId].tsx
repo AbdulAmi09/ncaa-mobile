@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ForwardSheet } from '@/components/chat/forward-sheet';
 import { ImageLightbox } from '@/components/chat/image-lightbox';
 import { MessageActionsSheet } from '@/components/chat/message-actions-sheet';
 import { MessageSearchSheet } from '@/components/chat/message-search-sheet';
@@ -37,6 +38,7 @@ import {
   fetchMessagesUpTo,
   fetchProfilesMap,
   fetchReactions,
+  forwardMessage,
   markRoomAsRead,
   messagePreview,
   otherParticipantId,
@@ -85,6 +87,7 @@ export default function ChatThreadScreen() {
   const [reportTarget, setReportTarget] = useState<{ userId: string; userName: string; messageId?: string } | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  const [forwardingMessage, setForwardingMessage] = useState<ChatMessage | null>(null);
 
   useEffect(() => {
     if (!roomId || !userId) return;
@@ -368,6 +371,19 @@ export default function ChatThreadScreen() {
     Alert.alert('Report submitted', 'Thank you — an admin will review this.');
   }
 
+  function handleOpenForward() {
+    if (!actionsFor) return;
+    setForwardingMessage(actionsFor);
+    setActionsFor(null);
+  }
+
+  async function handleForwardSelect(targetRoomId: string) {
+    if (!forwardingMessage || !userId) return;
+    await forwardMessage(targetRoomId, userId, forwardingMessage);
+    setForwardingMessage(null);
+    Alert.alert('Forwarded', 'Your message was sent.');
+  }
+
   async function handleJumpToMessage(result: MessageSearchResult) {
     setShowSearch(false);
     if (!roomId) return;
@@ -572,9 +588,20 @@ export default function ChatThreadScreen() {
         onDelete={actionsFor?.sender_id === userId ? handleDeleteFromSheet : undefined}
         onReport={actionsFor && actionsFor.sender_id !== userId ? handleOpenReport : undefined}
         onBlock={actionsFor && actionsFor.sender_id !== userId ? handleBlockFromSheet : undefined}
+        onForward={actionsFor && !actionsFor.is_deleted ? handleOpenForward : undefined}
         canEdit={actionsFor?.sender_id === userId && actionsFor?.message_type === 'text'}
         canDelete={actionsFor?.sender_id === userId}
       />
+
+      {roomId && (
+        <ForwardSheet
+          visible={!!forwardingMessage}
+          userId={userId}
+          excludeRoomId={roomId}
+          onClose={() => setForwardingMessage(null)}
+          onSelect={handleForwardSelect}
+        />
+      )}
 
       <ReportSheet
         visible={!!reportTarget}
