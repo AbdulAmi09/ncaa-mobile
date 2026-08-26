@@ -131,6 +131,31 @@ export async function editMessage(messageId: string, senderId: string, content: 
     .eq('sender_id', senderId);
 }
 
+export type MessageSearchResult = { id: string; content: string; message_type: string; created_at: string };
+
+export async function searchMessagesInRoom(roomId: string, query: string): Promise<MessageSearchResult[]> {
+  const { data } = await supabase
+    .from('chat_messages')
+    .select('id, content, message_type, created_at')
+    .eq('room_id', roomId)
+    .eq('is_deleted', false)
+    .ilike('content', `%${query}%`)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  return (data as MessageSearchResult[]) ?? [];
+}
+
+export async function fetchMessagesUpTo(roomId: string, createdAt: string, columns: string): Promise<ChatMessage[]> {
+  const { data } = await supabase
+    .from('chat_messages')
+    .select(columns)
+    .eq('room_id', roomId)
+    .lte('created_at', createdAt)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  return [...((data as unknown as ChatMessage[]) ?? [])].reverse();
+}
+
 export async function deleteMessage(messageId: string, senderId: string) {
   return supabase
     .from('chat_messages')

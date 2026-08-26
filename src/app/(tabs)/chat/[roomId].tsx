@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ImageLightbox } from '@/components/chat/image-lightbox';
 import { MessageActionsSheet } from '@/components/chat/message-actions-sheet';
+import { MessageSearchSheet } from '@/components/chat/message-search-sheet';
 import { ReportSheet } from '@/components/chat/report-sheet';
 import { VideoBubble } from '@/components/chat/video-bubble';
 import { VoiceBubble } from '@/components/chat/voice-bubble';
@@ -28,10 +29,12 @@ import { useAuth } from '@/lib/auth-context';
 import {
   type ChatMessage,
   type ChatRoom,
+  type MessageSearchResult,
   type ReactionGroup,
   deleteMessage,
   displayNameFor,
   editMessage,
+  fetchMessagesUpTo,
   fetchProfilesMap,
   fetchReactions,
   markRoomAsRead,
@@ -80,6 +83,8 @@ export default function ChatThreadScreen() {
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
   const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
   const [reportTarget, setReportTarget] = useState<{ userId: string; userName: string; messageId?: string } | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!roomId || !userId) return;
@@ -363,9 +368,43 @@ export default function ChatThreadScreen() {
     Alert.alert('Report submitted', 'Thank you — an admin will review this.');
   }
 
+  async function handleJumpToMessage(result: MessageSearchResult) {
+    setShowSearch(false);
+    if (!roomId) return;
+
+    if (!messages.some((m) => m.id === result.id)) {
+      const older = await fetchMessagesUpTo(roomId, result.created_at, MESSAGE_COLUMNS);
+      setMessages(older);
+      setReactions(await fetchReactions(older.map((m) => m.id)));
+    }
+
+    setHighlightedMessageId(result.id);
+    setTimeout(() => {
+      const index = messages.findIndex((m) => m.id === result.id);
+      if (index >= 0) {
+        try {
+          listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+        } catch {
+          // Best-effort -- FlatList can reject an index it hasn't measured
+          // yet right after a bulk data swap; the highlight still lands.
+        }
+      }
+    }, 150);
+    setTimeout(() => setHighlightedMessageId((cur) => (cur === result.id ? null : cur)), 2500);
+  }
+
   return (
     <ThemedView style={styles.flex}>
-      <Stack.Screen options={{ title }} />
+      <Stack.Screen
+        options={{
+          title,
+          headerRight: () => (
+            <Pressable onPress={() => setShowSearch(true)} hitSlop={8} style={{ padding: Spacing.one }}>
+              <Ionicons name="search" size={22} color={theme.text} />
+            </Pressable>
+          ),
+        }}
+      />
       <SafeAreaView style={styles.flex} edges={['bottom']}>
         <KeyboardAvoidingView
           style={styles.flex}
@@ -380,12 +419,19 @@ export default function ChatThreadScreen() {
               keyExtractor={(item) => item.id}
               contentContainerStyle={styles.messages}
               onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+              onScrollToIndexFailed={() => {
+                // FlatList can reject scrollToIndex right after a bulk data
+                // swap (search jump) before it's measured the new items --
+                // the highlight timer still fires either way, just without
+                // the scroll.
+              }}
               renderItem={({ item, index }) => {
                 const isOwn = item.sender_id === userId;
                 const showSender =
                   !isOwn && room?.is_direct_message === false && (index === 0 || messages[index - 1].sender_id !== item.sender_id);
                 const resolvedUrl = item.file_url ? resolvedUrls[item.file_url] : null;
                 const messageReactions = reactions[item.id] ?? [];
+                const isHighlighted = item.id === highlightedMessageId;
 
                 return (
                   <ThemedView style={[styles.bubbleRow, isOwn && styles.bubbleRowOwn]}>
@@ -395,6 +441,7 @@ export default function ChatThreadScreen() {
                         styles.bubble,
                         item.message_type === 'image' && styles.mediaBubble,
                         { backgroundColor: isOwn ? theme.primary : theme.backgroundElement },
+                        isHighlighted && { borderWidth: 2, borderColor: theme.warning },
                       ]}>
                       {showSender && (
                         <ThemedText type="small" style={[styles.senderName, { color: theme.primary }]}>
@@ -537,6 +584,15 @@ export default function ChatThreadScreen() {
       />
 
       <ImageLightbox uri={lightboxUri} onClose={() => setLightboxUri(null)} />
+
+      {roomId && (
+        <MessageSearchSheet
+          visible={showSearch}
+          roomId={roomId}
+          onClose={() => setShowSearch(false)}
+          onSelect={handleJumpToMessage}
+        />
+      )}
     </ThemedView>
   );
 }
