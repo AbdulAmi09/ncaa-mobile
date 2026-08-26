@@ -8,6 +8,7 @@ import { AppLockScreen } from '@/components/app-lock-screen';
 import { AppLockProvider, useAppLock } from '@/lib/app-lock-context';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { registerForPushNotifications } from '@/lib/push-notifications';
+import { Sentry } from '@/lib/sentry';
 import { ThemeOverrideProvider, useThemeOverride } from '@/lib/theme-override-context';
 
 SplashScreen.preventAutoHideAsync();
@@ -27,6 +28,13 @@ function RootNavigator() {
     // re-registering the (unchanged) push token on every one of those would
     // just be wasted permission checks and RPC calls.
     if (userId) registerForPushNotifications();
+  }, [userId]);
+
+  useEffect(() => {
+    // Attaches the arbiter's id to any crash/error report so an issue in
+    // Sentry can be traced back to who hit it -- id only, no PII, matching
+    // sendDefaultPii: false in lib/sentry.ts.
+    Sentry.setUser(userId ? { id: userId } : null);
   }, [userId]);
 
   if (loading) {
@@ -66,7 +74,7 @@ function NavigationThemeProvider({ children }: { children: React.ReactNode }) {
   return <ThemeProvider value={resolvedScheme === 'dark' ? DarkTheme : DefaultTheme}>{children}</ThemeProvider>;
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeOverrideProvider>
@@ -81,3 +89,8 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
+// Sentry.wrap adds automatic navigation tracing and wraps the tree in its
+// own error boundary, on top of the global JS/native crash handlers
+// Sentry.init already installed in lib/sentry.ts.
+export default Sentry.wrap(RootLayout);

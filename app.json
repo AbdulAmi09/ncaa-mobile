@@ -25,14 +25,41 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "app.ncaaweb.com.ng", "pathPrefix": "/dashboard/tournament-assignment" },
-            { "scheme": "https", "host": "app.ncaaweb.com.ng", "pathPrefix": "/dashboard/payments" },
-            { "scheme": "https", "host": "app.ncaaweb.com.ng", "pathPrefix": "/dashboard/chat" },
-            { "scheme": "https", "host": "app.ncaaweb.com.ng", "pathPrefix": "/dashboard/notifications" },
-            { "scheme": "https", "host": "app.ncaaweb.com.ng", "pathPrefix": "/dashboard/profile" },
-            { "scheme": "https", "host": "app.ncaaweb.com.ng", "pathPrefix": "/dashboard/settings" }
+            {
+              "scheme": "https",
+              "host": "app.ncaaweb.com.ng",
+              "pathPrefix": "/dashboard/tournament-assignment"
+            },
+            {
+              "scheme": "https",
+              "host": "app.ncaaweb.com.ng",
+              "pathPrefix": "/dashboard/payments"
+            },
+            {
+              "scheme": "https",
+              "host": "app.ncaaweb.com.ng",
+              "pathPrefix": "/dashboard/chat"
+            },
+            {
+              "scheme": "https",
+              "host": "app.ncaaweb.com.ng",
+              "pathPrefix": "/dashboard/notifications"
+            },
+            {
+              "scheme": "https",
+              "host": "app.ncaaweb.com.ng",
+              "pathPrefix": "/dashboard/profile"
+            },
+            {
+              "scheme": "https",
+              "host": "app.ncaaweb.com.ng",
+              "pathPrefix": "/dashboard/settings"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -67,7 +94,8 @@
         {
           "faceIDPermission": "Let NCAA Arbiters use Face ID to unlock the app."
         }
-      ]
+      ],
+      "@sentry/react-native"
     ],
     "experiments": {
       "typedRoutes": true,
