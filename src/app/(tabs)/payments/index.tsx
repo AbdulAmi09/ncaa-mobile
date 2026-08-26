@@ -9,7 +9,7 @@ import { BigButton } from '@/components/big-button';
 import { Card } from '@/components/card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { MaxContentWidth, MinTouchTarget, Radius, Spacing } from '@/constants/theme';
 import type { ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
@@ -24,7 +24,6 @@ import {
 } from '@/lib/payments';
 import { initializeMobilePayment } from '@/lib/paystack';
 
-const PAYMENTS_WEB_URL = 'https://app.ncaaweb.com.ng/dashboard/payments';
 const PAYMENT_CALLBACK_URL = 'ncaamobile://payments/callback';
 
 function canPayNow(p: Payment) {
@@ -115,10 +114,6 @@ export default function PaymentsScreen() {
     setLoadingMore(false);
   }
 
-  function payOnWebsite() {
-    WebBrowser.openBrowserAsync(PAYMENTS_WEB_URL);
-  }
-
   async function handlePayNow(payment: Payment) {
     setErrorText('');
     setPayingId(payment.id);
@@ -159,6 +154,12 @@ export default function PaymentsScreen() {
       <SafeAreaView style={styles.flex} edges={['top']}>
         <ThemedView style={styles.headerRow}>
           <ThemedText type="title">Payments</ThemedText>
+          <Pressable
+            onPress={() => router.push('/payments/new')}
+            style={[styles.newPaymentButton, { backgroundColor: theme.primary }]}
+            hitSlop={8}>
+            <Ionicons name="add" size={22} color={theme.primaryText} />
+          </Pressable>
         </ThemedView>
 
         {loading ? (
@@ -190,7 +191,7 @@ export default function PaymentsScreen() {
                     </ThemedView>
                   </ThemedView>
                 ))}
-                <BigButton label="Pay on the NCAA website" onPress={payOnWebsite} />
+                <BigButton label="Make a payment" onPress={() => router.push('/payments/new')} />
               </Card>
             )}
 
@@ -313,7 +314,20 @@ function SummaryTile({
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  headerRow: { paddingHorizontal: Spacing.four, paddingTop: Spacing.two },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
+  },
+  newPaymentButton: {
+    width: MinTouchTarget,
+    height: MinTouchTarget,
+    borderRadius: MinTouchTarget / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   content: {
     padding: Spacing.four,
     gap: Spacing.three,

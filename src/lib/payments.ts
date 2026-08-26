@@ -73,3 +73,40 @@ export async function fetchPaymentById(paymentId: string, arbiterId: string) {
     .eq('arbiter_id', arbiterId)
     .single<Payment>();
 }
+
+export type NewPaymentType = 'annual_dues' | 'checkoff' | 'penalty' | 'donation' | 'certification';
+
+export const NEW_PAYMENT_TYPES: { id: NewPaymentType; label: string; description: string }[] = [
+  { id: 'annual_dues', label: 'Annual Dues', description: 'Yearly membership fee' },
+  { id: 'checkoff', label: 'Checkoff', description: 'Checkoff fee' },
+  { id: 'penalty', label: 'Penalty', description: 'Outstanding penalties' },
+  { id: 'donation', label: 'Donation', description: 'Support the federation' },
+  { id: 'certification', label: 'Certification', description: 'Certification fees' },
+];
+
+// Same insert shape as the web app's PaymentDialog. For annual_dues/checkoff/
+// penalty the DB overrides this amount with the real amount owed from
+// payment_due regardless of what's sent -- this value only sticks as-is for
+// donation/certification, which have no underlying due row to check against.
+export async function createPayment(params: {
+  arbiterId: string;
+  paymentType: NewPaymentType;
+  amount: number;
+  description: string | null;
+  paymentMethod?: 'bank_transfer';
+  receiptUrl?: string;
+}) {
+  return supabase
+    .from('payments')
+    .insert({
+      arbiter_id: params.arbiterId,
+      amount: params.amount,
+      payment_type: params.paymentType,
+      payment_status: 'pending',
+      payment_method: params.paymentMethod,
+      receipt_url: params.receiptUrl,
+      description: params.description,
+    })
+    .select()
+    .single();
+}
