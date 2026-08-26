@@ -15,6 +15,7 @@ export default function PaymentsStackLayout() {
       }}>
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="[id]" options={{ title: 'Receipt' }} />
+      <Stack.Screen name="callback" options={{ headerShown: false }} />
     </Stack>
   );
 }

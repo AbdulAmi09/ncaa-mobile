@@ -22,8 +22,14 @@ import {
   fetchPaymentsPage,
   formatNaira,
 } from '@/lib/payments';
+import { initializeMobilePayment } from '@/lib/paystack';
 
 const PAYMENTS_WEB_URL = 'https://app.ncaaweb.com.ng/dashboard/payments';
+const PAYMENT_CALLBACK_URL = 'ncaamobile://payments/callback';
+
+function canPayNow(p: Payment) {
+  return (p.payment_status === 'pending' && !p.payment_method) || p.payment_status === 'overdue';
+}
 
 type Filter = 'all' | 'paid' | 'pending' | 'overdue';
 
@@ -68,6 +74,7 @@ export default function PaymentsScreen() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [errorText, setErrorText] = useState('');
+  const [payingId, setPayingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -110,6 +117,23 @@ export default function PaymentsScreen() {
 
   function payOnWebsite() {
     WebBrowser.openBrowserAsync(PAYMENTS_WEB_URL);
+  }
+
+  async function handlePayNow(payment: Payment) {
+    setErrorText('');
+    setPayingId(payment.id);
+    const { authorizationUrl, error } = await initializeMobilePayment(payment.id);
+    if (error || !authorizationUrl) {
+      setPayingId(null);
+      setErrorText(error ?? "Couldn't start this payment. Please try again.");
+      return;
+    }
+    await WebBrowser.openAuthSessionAsync(authorizationUrl, PAYMENT_CALLBACK_URL);
+    setPayingId(null);
+    // Paystack's webhook updates the payment row server-side; reload to
+    // pick up whatever status it landed on (paid, or still pending if the
+    // user backed out or the webhook hasn't landed yet).
+    load();
   }
 
   const { totalPaid, totalPending, totalOverdue, thisYearTotal } = useMemo(() => {
@@ -227,6 +251,22 @@ export default function PaymentsScreen() {
                       View receipt →
                     </ThemedText>
                   )}
+                  {canPayNow(p) && (
+                    <ThemedView style={styles.payNowWrap}>
+                      <BigButton
+                        label="Pay now"
+                        variant={p.payment_status === 'overdue' ? 'danger' : 'primary'}
+                        onPress={() => handlePayNow(p)}
+                        loading={payingId === p.id}
+                        disabled={payingId !== null}
+                      />
+                    </ThemedView>
+                  )}
+                  {p.payment_status === 'pending' && p.payment_method === 'bank_transfer' && (
+                    <ThemedText type="small" themeColor="warning" style={styles.awaitingReview}>
+                      Awaiting admin review
+                    </ThemedText>
+                  )}
                 </Card>
               </Pressable>
             ))}
@@ -288,6 +328,8 @@ const styles = StyleSheet.create({
   dueInfo: { gap: 2 },
   summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
   summaryTile: { flexBasis: '47%', flexGrow: 1 },
+  payNowWrap: { marginTop: Spacing.two },
+  awaitingReview: { marginTop: Spacing.one },
   filterRow: { gap: Spacing.two, paddingVertical: Spacing.half },
   filterChip: { borderWidth: 1, borderRadius: Radius.pill, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: Spacing.two },
