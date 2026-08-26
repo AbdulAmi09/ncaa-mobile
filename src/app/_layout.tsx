@@ -5,8 +5,10 @@ import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppLockScreen } from '@/components/app-lock-screen';
+import { OnboardingCarousel } from '@/components/onboarding-carousel';
 import { AppLockProvider, useAppLock } from '@/lib/app-lock-context';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
+import { useHasSeenOnboarding } from '@/lib/onboarding';
 import { registerForPushNotifications } from '@/lib/push-notifications';
 import { Sentry } from '@/lib/sentry';
 import { ThemeOverrideProvider, useThemeOverride } from '@/lib/theme-override-context';
@@ -16,6 +18,7 @@ SplashScreen.preventAutoHideAsync();
 function RootNavigator() {
   const { session, loading } = useAuth();
   const { enabled: lockEnabled, unlocked } = useAppLock();
+  const { seen: hasSeenOnboarding, markSeen: markOnboardingSeen } = useHasSeenOnboarding();
 
   useEffect(() => {
     if (!loading) SplashScreen.hideAsync();
@@ -37,12 +40,18 @@ function RootNavigator() {
     Sentry.setUser(userId ? { id: userId } : null);
   }, [userId]);
 
-  if (loading) {
+  if (loading || hasSeenOnboarding === null) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator size="large" />
       </View>
     );
+  }
+
+  // First launch only, and only before signing in -- someone who's already
+  // signed in has obviously used the app before, no need to explain it.
+  if (!session && !hasSeenOnboarding) {
+    return <OnboardingCarousel onDone={markOnboardingSeen} />;
   }
 
   // Only gates screens behind the signed-in guard below -- there's nothing
