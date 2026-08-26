@@ -3,6 +3,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -13,6 +14,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ImageLightbox } from '@/components/chat/image-lightbox';
+import { MessageActionsSheet } from '@/components/chat/message-actions-sheet';
 import { VideoBubble } from '@/components/chat/video-bubble';
 import { VoiceBubble } from '@/components/chat/voice-bubble';
 import { ThemedText } from '@/components/themed-text';
@@ -23,17 +26,23 @@ import { useAuth } from '@/lib/auth-context';
 import {
   type ChatMessage,
   type ChatRoom,
+  type ReactionGroup,
+  deleteMessage,
   displayNameFor,
+  editMessage,
   fetchProfilesMap,
+  fetchReactions,
   markRoomAsRead,
   messagePreview,
   otherParticipantId,
+  toggleReaction,
 } from '@/lib/chat';
 import { pickAndUploadChatMedia, resolveSignedChatMediaUrl, uploadVoiceMessage } from '@/lib/chat-media';
 import { supabase } from '@/lib/supabase';
 import { useVoiceRecorder } from '@/lib/use-voice-recorder';
 
-const MESSAGE_COLUMNS = 'id, room_id, content, created_at, sender_id, message_type, file_url, file_name, file_size, duration, is_deleted';
+const MESSAGE_COLUMNS =
+  'id, room_id, content, created_at, sender_id, message_type, file_url, file_name, file_size, duration, is_deleted, is_edited';
 
 function formatRecordingTime(seconds: number) {
   const mins = Math.floor(seconds / 60);
@@ -59,6 +68,10 @@ export default function ChatThreadScreen() {
   const [sendingMedia, setSendingMedia] = useState(false);
   const [resolvedUrls, setResolvedUrls] = useState<Record<string, string>>({});
   const [errorText, setErrorText] = useState('');
+  const [reactions, setReactions] = useState<Record<string, ReactionGroup[]>>({});
+  const [actionsFor, setActionsFor] = useState<ChatMessage | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [lightboxUri, setLightboxUri] = useState<string | null>(null);
 
   useEffect(() => {
     if (!roomId || !userId) return;
@@ -93,6 +106,7 @@ export default function ChatThreadScreen() {
       });
       setSenderNames(names);
       setMessages(ordered);
+      setReactions(await fetchReactions(ordered.map((m) => m.id)));
       setLoading(false);
       markRoomAsRead(userId, roomId);
       setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 50);
@@ -122,6 +136,16 @@ export default function ChatThreadScreen() {
           setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
         },
       )
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${roomId}` }, (payload) => {
+        const updated = payload.new as ChatMessage;
+        setMessages((prev) => prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m)));
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, () => {
+        setMessages((prev) => {
+          if (prev.length > 0) fetchReactions(prev.map((m) => m.id)).then(setReactions);
+          return prev;
+        });
+      })
       .subscribe();
 
     return () => {
@@ -156,6 +180,18 @@ export default function ChatThreadScreen() {
   const handleSend = useCallback(async () => {
     const text = draft.trim();
     if (!text || !roomId || !userId) return;
+
+    if (editingMessageId) {
+      setSending(true);
+      const { error } = await editMessage(editingMessageId, userId, text);
+      setSending(false);
+      if (!error) {
+        setDraft('');
+        setEditingMessageId(null);
+      }
+      return;
+    }
+
     setSending(true);
     setDraft('');
     const { error } = await supabase.from('chat_messages').insert({
@@ -166,7 +202,12 @@ export default function ChatThreadScreen() {
     });
     setSending(false);
     if (error) setDraft(text);
-  }, [draft, roomId, userId]);
+  }, [draft, roomId, userId, editingMessageId]);
+
+  function cancelEditing() {
+    setEditingMessageId(null);
+    setDraft('');
+  }
 
   async function handleAttach() {
     if (!roomId || !userId) return;
@@ -221,6 +262,40 @@ export default function ChatThreadScreen() {
     }
   }
 
+  async function handleReact(emoji: string) {
+    if (!actionsFor || !userId) return;
+    const messageId = actionsFor.id;
+    setActionsFor(null);
+    const existing = reactions[messageId]?.find((r) => r.emoji === emoji);
+    const alreadyReacted = existing?.userIds.includes(userId) ?? false;
+    await toggleReaction(messageId, userId, emoji, alreadyReacted);
+    setReactions(await fetchReactions(messages.map((m) => m.id)));
+  }
+
+  function handleEditFromSheet() {
+    if (!actionsFor) return;
+    setEditingMessageId(actionsFor.id);
+    setDraft(actionsFor.content);
+    setActionsFor(null);
+  }
+
+  function handleDeleteFromSheet() {
+    if (!actionsFor || !userId) return;
+    const target = actionsFor;
+    setActionsFor(null);
+    Alert.alert('Delete message?', 'This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          await deleteMessage(target.id, userId);
+          setMessages((prev) => prev.map((m) => (m.id === target.id ? { ...m, is_deleted: true, content: '' } : m)));
+        },
+      },
+    ]);
+  }
+
   return (
     <ThemedView style={styles.flex}>
       <Stack.Screen options={{ title }} />
@@ -243,10 +318,12 @@ export default function ChatThreadScreen() {
                 const showSender =
                   !isOwn && room?.is_direct_message === false && (index === 0 || messages[index - 1].sender_id !== item.sender_id);
                 const resolvedUrl = item.file_url ? resolvedUrls[item.file_url] : null;
+                const messageReactions = reactions[item.id] ?? [];
 
                 return (
                   <ThemedView style={[styles.bubbleRow, isOwn && styles.bubbleRowOwn]}>
-                    <ThemedView
+                    <Pressable
+                      onLongPress={() => !item.is_deleted && setActionsFor(item)}
                       style={[
                         styles.bubble,
                         item.message_type === 'image' && styles.mediaBubble,
@@ -257,8 +334,32 @@ export default function ChatThreadScreen() {
                           {senderNames[item.sender_id] ?? 'Unknown'}
                         </ThemedText>
                       )}
-                      <MessageBody item={item} resolvedUrl={resolvedUrl} isOwn={isOwn} theme={theme} />
-                    </ThemedView>
+                      <MessageBody
+                        item={item}
+                        resolvedUrl={resolvedUrl}
+                        isOwn={isOwn}
+                        theme={theme}
+                        onImagePress={() => resolvedUrl && setLightboxUri(resolvedUrl)}
+                      />
+                      {item.is_edited && !item.is_deleted && (
+                        <ThemedText
+                          type="small"
+                          style={{ color: isOwn ? theme.primaryText : theme.textSecondary, opacity: 0.7 }}>
+                          edited
+                        </ThemedText>
+                      )}
+                    </Pressable>
+                    {messageReactions.length > 0 && (
+                      <ThemedView style={styles.reactionsRow}>
+                        {messageReactions.map((r) => (
+                          <ThemedView key={r.emoji} type="backgroundElement" style={styles.reactionPill}>
+                            <ThemedText type="small">
+                              {r.emoji} {r.userIds.length > 1 ? r.userIds.length : ''}
+                            </ThemedText>
+                          </ThemedView>
+                        ))}
+                      </ThemedView>
+                    )}
                   </ThemedView>
                 );
               }}
@@ -275,6 +376,19 @@ export default function ChatThreadScreen() {
               <ThemedText themeColor="danger" type="small">
                 {errorText}
               </ThemedText>
+            </ThemedView>
+          )}
+
+          {editingMessageId && (
+            <ThemedView style={[styles.editingBanner, { borderTopColor: theme.border }]}>
+              <ThemedText type="small" style={{ color: theme.primary, flex: 1 }}>
+                Editing message
+              </ThemedText>
+              <Pressable onPress={cancelEditing} hitSlop={8}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Cancel
+                </ThemedText>
+              </Pressable>
             </ThemedView>
           )}
 
@@ -296,11 +410,11 @@ export default function ChatThreadScreen() {
             </ThemedView>
           ) : (
             <ThemedView style={[styles.inputRow, { borderTopColor: theme.border }]}>
-              <Pressable onPress={handleAttach} disabled={sendingMedia} style={styles.iconButton} hitSlop={8}>
+              <Pressable onPress={handleAttach} disabled={sendingMedia || !!editingMessageId} style={styles.iconButton} hitSlop={8}>
                 {sendingMedia ? (
                   <ActivityIndicator size="small" />
                 ) : (
-                  <Ionicons name="add-circle-outline" size={26} color={theme.text} />
+                  <Ionicons name="add-circle-outline" size={26} color={editingMessageId ? theme.border : theme.text} />
                 )}
               </Pressable>
               <TextInput
@@ -316,17 +430,29 @@ export default function ChatThreadScreen() {
                   onPress={handleSend}
                   disabled={sending}
                   style={[styles.sendButton, { backgroundColor: theme.primary, opacity: sending ? 0.5 : 1 }]}>
-                  <Ionicons name="send" size={20} color={theme.primaryText} />
+                  <Ionicons name={editingMessageId ? 'checkmark' : 'send'} size={20} color={theme.primaryText} />
                 </Pressable>
               ) : (
-                <Pressable onPress={handleMicPress} style={styles.iconButton} hitSlop={8}>
-                  <Ionicons name="mic-outline" size={24} color={theme.text} />
+                <Pressable onPress={handleMicPress} disabled={!!editingMessageId} style={styles.iconButton} hitSlop={8}>
+                  <Ionicons name="mic-outline" size={24} color={editingMessageId ? theme.border : theme.text} />
                 </Pressable>
               )}
             </ThemedView>
           )}
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      <MessageActionsSheet
+        visible={!!actionsFor}
+        onClose={() => setActionsFor(null)}
+        onReact={handleReact}
+        onEdit={actionsFor?.sender_id === userId && actionsFor?.message_type === 'text' ? handleEditFromSheet : undefined}
+        onDelete={actionsFor?.sender_id === userId ? handleDeleteFromSheet : undefined}
+        canEdit={actionsFor?.sender_id === userId && actionsFor?.message_type === 'text'}
+        canDelete={actionsFor?.sender_id === userId}
+      />
+
+      <ImageLightbox uri={lightboxUri} onClose={() => setLightboxUri(null)} />
     </ThemedView>
   );
 }
@@ -336,11 +462,13 @@ function MessageBody({
   resolvedUrl,
   isOwn,
   theme,
+  onImagePress,
 }: {
   item: ChatMessage;
   resolvedUrl: string | null | undefined;
   isOwn: boolean;
   theme: ReturnType<typeof useTheme>;
+  onImagePress: () => void;
 }) {
   if (item.is_deleted) {
     return (
@@ -352,7 +480,11 @@ function MessageBody({
 
   if (item.message_type === 'image') {
     if (!resolvedUrl) return <ActivityIndicator size="small" color={isOwn ? theme.primaryText : theme.text} />;
-    return <Image source={{ uri: resolvedUrl }} style={styles.image} resizeMode="cover" />;
+    return (
+      <Pressable onPress={onImagePress}>
+        <Image source={{ uri: resolvedUrl }} style={styles.image} resizeMode="cover" />
+      </Pressable>
+    );
   }
 
   if (item.message_type === 'video') {
@@ -378,13 +510,22 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   messages: { padding: Spacing.three, gap: Spacing.two },
   emptyThread: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: Spacing.six },
-  bubbleRow: { flexDirection: 'row', justifyContent: 'flex-start' },
-  bubbleRowOwn: { justifyContent: 'flex-end' },
+  bubbleRow: { flexDirection: 'column', alignItems: 'flex-start' },
+  bubbleRowOwn: { alignItems: 'flex-end' },
   bubble: { maxWidth: '80%', borderRadius: 16, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   mediaBubble: { padding: Spacing.one },
   senderName: { marginBottom: 2, fontWeight: '700' },
   image: { width: 220, height: 220, borderRadius: 12 },
+  reactionsRow: { flexDirection: 'row', gap: 4, marginTop: 2 },
+  reactionPill: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   errorBanner: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.one },
+  editingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderTopWidth: 1,
+  },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',

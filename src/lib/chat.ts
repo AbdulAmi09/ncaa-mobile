@@ -31,6 +31,7 @@ export type ChatMessage = {
   file_size: number | null;
   duration: number | null;
   is_deleted: boolean | null;
+  is_edited: boolean | null;
 };
 
 export function displayNameFor(profile?: ChatProfile | null) {
@@ -88,4 +89,52 @@ export async function searchUsersForDm(query: string) {
 
 export async function markRoomAsRead(userId: string, roomId: string) {
   await supabase.rpc('mark_messages_as_read', { p_user_id: userId, p_room_id: roomId });
+}
+
+export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+
+export type ReactionGroup = { emoji: string; userIds: string[] };
+
+export async function fetchReactions(messageIds: string[]): Promise<Record<string, ReactionGroup[]>> {
+  if (messageIds.length === 0) return {};
+  const { data } = await supabase
+    .from('message_reactions')
+    .select('message_id, user_id, emoji')
+    .in('message_id', messageIds);
+
+  const grouped: Record<string, Record<string, string[]>> = {};
+  (data ?? []).forEach((r: any) => {
+    grouped[r.message_id] = grouped[r.message_id] || {};
+    grouped[r.message_id][r.emoji] = grouped[r.message_id][r.emoji] || [];
+    grouped[r.message_id][r.emoji].push(r.user_id);
+  });
+
+  const result: Record<string, ReactionGroup[]> = {};
+  Object.entries(grouped).forEach(([msgId, emojiMap]) => {
+    result[msgId] = Object.entries(emojiMap).map(([emoji, userIds]) => ({ emoji, userIds }));
+  });
+  return result;
+}
+
+export async function toggleReaction(messageId: string, userId: string, emoji: string, alreadyReacted: boolean) {
+  if (alreadyReacted) {
+    return supabase.from('message_reactions').delete().eq('message_id', messageId).eq('user_id', userId).eq('emoji', emoji);
+  }
+  return supabase.from('message_reactions').insert({ message_id: messageId, user_id: userId, emoji });
+}
+
+export async function editMessage(messageId: string, senderId: string, content: string) {
+  return supabase
+    .from('chat_messages')
+    .update({ content, is_edited: true, edited_at: new Date().toISOString() })
+    .eq('id', messageId)
+    .eq('sender_id', senderId);
+}
+
+export async function deleteMessage(messageId: string, senderId: string) {
+  return supabase
+    .from('chat_messages')
+    .update({ is_deleted: true, content: '', file_url: null })
+    .eq('id', messageId)
+    .eq('sender_id', senderId);
 }
