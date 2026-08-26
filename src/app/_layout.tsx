@@ -42,6 +42,8 @@ function RootNavigator() {
           name="notifications"
           options={{ headerShown: true, title: 'Notifications', presentation: 'card' }}
         />
+        <Stack.Screen name="dashboard/index" />
+        <Stack.Screen name="dashboard/[...path]" />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="login" />

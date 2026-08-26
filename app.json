@@ -18,7 +18,22 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.amisuabdul.ncaamobile"
+      "package": "com.amisuabdul.ncaamobile",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "app.ncaaweb.com.ng", "pathPrefix": "/dashboard/tournament-assignment" },
+            { "scheme": "https", "host": "app.ncaaweb.com.ng", "pathPrefix": "/dashboard/payments" },
+            { "scheme": "https", "host": "app.ncaaweb.com.ng", "pathPrefix": "/dashboard/chat" },
+            { "scheme": "https", "host": "app.ncaaweb.com.ng", "pathPrefix": "/dashboard/notifications" },
+            { "scheme": "https", "host": "app.ncaaweb.com.ng", "pathPrefix": "/dashboard/profile" },
+            { "scheme": "https", "host": "app.ncaaweb.com.ng", "pathPrefix": "/dashboard/settings" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "output": "static",
