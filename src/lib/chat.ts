@@ -26,6 +26,10 @@ export type ChatMessage = {
   created_at: string;
   sender_id: string;
   message_type: string;
+  file_url: string | null;
+  file_name: string | null;
+  file_size: number | null;
+  duration: number | null;
   is_deleted: boolean | null;
 };
 
@@ -39,9 +43,9 @@ export function otherParticipantId(room: ChatRoom, currentUserId: string) {
   return room.created_by === currentUserId ? room.direct_message_with : room.created_by;
 }
 
-// Plain-language stand-in for message types this first mobile pass doesn't
-// render (voice notes, photos, files) -- matches the preview text the web
-// chat list already uses, so it reads the same across both apps.
+// Plain-text preview for the conversation list row -- matches the preview
+// text the web chat list already uses. The thread itself renders the
+// actual photo/video/voice bubble; this is only for the one-line summary.
 export function messagePreview(message: Pick<ChatMessage, 'content' | 'message_type' | 'is_deleted'> | null) {
   if (!message) return 'No messages yet';
   if (message.is_deleted) return 'This message was deleted';
