@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -57,6 +58,9 @@ export default function ChatThreadScreen() {
   const userId = session?.user.id;
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const recorder = useVoiceRecorder();
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const lastTypingSentRef = useRef(0);
+  const typingTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const [room, setRoom] = useState<ChatRoom | null>(null);
   const [title, setTitle] = useState('Chat');
@@ -72,6 +76,7 @@ export default function ChatThreadScreen() {
   const [actionsFor, setActionsFor] = useState<ChatMessage | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
+  const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!roomId || !userId) return;
@@ -146,9 +151,25 @@ export default function ChatThreadScreen() {
           return prev;
         });
       })
+      .on('broadcast', { event: 'typing' }, ({ payload }: { payload: { userId: string } }) => {
+        if (payload.userId === userId) return;
+        setTypingUsers((prev) => ({ ...prev, [payload.userId]: '' }));
+        if (typingTimeoutsRef.current[payload.userId]) clearTimeout(typingTimeoutsRef.current[payload.userId]);
+        typingTimeoutsRef.current[payload.userId] = setTimeout(() => {
+          setTypingUsers((prev) => {
+            const next = { ...prev };
+            delete next[payload.userId];
+            return next;
+          });
+        }, 3000);
+      })
       .subscribe();
 
+    channelRef.current = channel;
+
     return () => {
+      channelRef.current = null;
+      setTypingUsers({});
       supabase.removeChannel(channel);
     };
     // senderNames intentionally excluded: re-subscribing on every profile
@@ -176,6 +197,15 @@ export default function ChatThreadScreen() {
       cancelled = true;
     };
   }, [messages, resolvedUrls]);
+
+  function handleDraftChange(text: string) {
+    setDraft(text);
+    if (!userId || editingMessageId) return;
+    const now = Date.now();
+    if (now - lastTypingSentRef.current < 2000) return;
+    lastTypingSentRef.current = now;
+    channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { userId } });
+  }
 
   const handleSend = useCallback(async () => {
     const text = draft.trim();
@@ -379,6 +409,14 @@ export default function ChatThreadScreen() {
             </ThemedView>
           )}
 
+          {Object.keys(typingUsers).length > 0 && (
+            <ThemedView style={styles.typingRow}>
+              <ThemedText type="small" themeColor="textSecondary">
+                {room?.is_direct_message ? 'Typing…' : `${Object.keys(typingUsers).length} typing…`}
+              </ThemedText>
+            </ThemedView>
+          )}
+
           {editingMessageId && (
             <ThemedView style={[styles.editingBanner, { borderTopColor: theme.border }]}>
               <ThemedText type="small" style={{ color: theme.primary, flex: 1 }}>
@@ -419,7 +457,7 @@ export default function ChatThreadScreen() {
               </Pressable>
               <TextInput
                 value={draft}
-                onChangeText={setDraft}
+                onChangeText={handleDraftChange}
                 placeholder="Type a message"
                 placeholderTextColor={theme.textSecondary}
                 multiline
@@ -519,6 +557,7 @@ const styles = StyleSheet.create({
   reactionsRow: { flexDirection: 'row', gap: 4, marginTop: 2 },
   reactionPill: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   errorBanner: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.one },
+  typingRow: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.one },
   editingBanner: {
     flexDirection: 'row',
     alignItems: 'center',
